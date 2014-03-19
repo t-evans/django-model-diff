@@ -2,6 +2,7 @@ Add "django_model_diff" to your INSTALLED_APPS setting.
 
 Example usage:
 
+```python
 from django_model_diff.models import ComparableModelMixin
 from django.db import models
 
