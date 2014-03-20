@@ -155,17 +155,18 @@ class ComparableModelMixin(object):
                 return not self._approx_equal(None, value)
 
         my_fields = self._as_dict()
+        fields_to_ignore = self.comparable_fields_to_ignore()
         if other is not None:
             other_fields = other._as_dict()
             if show_other_as_second_value:
-                self._latest_fields_with_differing_values = dict([(key, (value, other_fields.get(key))) for key, value in my_fields.iteritems() if not key in self.comparable_fields_to_ignore() and not self._approx_equal(value, other_fields.get(key))])
+                self._latest_fields_with_differing_values = dict([(key, (value, other_fields.get(key))) for key, value in my_fields.iteritems() if not key in fields_to_ignore and not self._approx_equal(value, other_fields.get(key))])
             else:
-                self._latest_fields_with_differing_values = dict([(key, (other_fields.get(key), value)) for key, value in my_fields.iteritems() if not key in self.comparable_fields_to_ignore() and not self._approx_equal(value, other_fields.get(key))])
+                self._latest_fields_with_differing_values = dict([(key, (other_fields.get(key), value)) for key, value in my_fields.iteritems() if not key in fields_to_ignore and not self._approx_equal(value, other_fields.get(key))])
         else:
             if show_other_as_second_value:
-                self._latest_fields_with_differing_values = dict([(key, (value, None)) for key, value in self._as_dict().iteritems() if not key in self.comparable_fields_to_ignore() and has_non_empty_value(value)])
+                self._latest_fields_with_differing_values = dict([(key, (value, None)) for key, value in self._as_dict().iteritems() if not key in fields_to_ignore and has_non_empty_value(value)])
             else:
-                self._latest_fields_with_differing_values = dict([(key, (None, value)) for key, value in self._as_dict().iteritems() if not key in self.comparable_fields_to_ignore() and has_non_empty_value(value)])
+                self._latest_fields_with_differing_values = dict([(key, (None, value)) for key, value in self._as_dict().iteritems() if not key in fields_to_ignore and has_non_empty_value(value)])
         return self._latest_fields_with_differing_values
 
     def latest_fields_with_differing_values(self, other, show_other_as_second_value=True):
