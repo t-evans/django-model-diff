@@ -4,6 +4,7 @@
 # Copyright 2014, Nutrislice Inc.  All rights reserved.
 
 from decimal import Decimal
+from django.db.models.fields import NOT_PROVIDED
 
 
 def has_non_whitespace_text(some_str):
@@ -28,6 +29,41 @@ def has_non_whitespace_text(some_str):
     except AttributeError:
         # If it's not a string, I guess we'll call that "non-whitespace"
         return True
+
+
+class FieldAndValue(object):
+    def __init__(self, obj, field):
+        self.field = field
+        self.value = getattr(obj, field.name)
+
+    def get_default_model_value(self):
+        default_value = None if self.field.default == NOT_PROVIDED else self.field.default
+        return default_value
+
+    def __unicode__(self):
+        if self.value is not None:
+            return unicode(self.value)
+        else:
+            return ""
+
+
+def get_before_value(field_and_value, use_default_model_values_if_other_is_none):
+    # Since "other" is None, the calling code may want to either return None for
+    # all of the "other" objects fields, or it may want the default values for
+    # each of those fields.
+    if use_default_model_values_if_other_is_none:
+        before_value = field_and_value.get_default_model_value()
+    else:
+        before_value = None
+    return before_value
+
+
+def get_field_value(obj, field, get_field_and_value):
+    field_and_value = FieldAndValue(obj, field)
+    if get_field_and_value:
+        return field_and_value
+    else:
+        return field_and_value.value
 
 
 class ComparableModelMixin(object):
@@ -61,8 +97,8 @@ class ComparableModelMixin(object):
         """
         return []
 
-    def _as_dict(self):
-        self.latest_dict_values = dict([(f.verbose_name, getattr(self, f.name)) for f in self._meta.local_fields if not f.rel or f.name in self.comparable_relationships_to_include()])
+    def _as_dict(self, get_field_and_value=False):
+        self.latest_dict_values = dict([(f.verbose_name, get_field_value(self, f, get_field_and_value)) for f in self._meta.local_fields if not f.rel or f.name in self.comparable_relationships_to_include()])
         return self.latest_dict_values
 
     def _float_approx_equal(self, x, y):
@@ -137,7 +173,7 @@ class ComparableModelMixin(object):
         else:
             return x == y
 
-    def find_fields_with_differing_values(self, other, show_other_as_second_value=True):
+    def find_fields_with_differing_values(self, other, show_other_as_second_value=True, use_default_model_values_if_other_is_none=False):
         """
         Compares each of the fields of this object with 'other'.
 
@@ -166,17 +202,27 @@ class ComparableModelMixin(object):
             if show_other_as_second_value:
                 self._latest_fields_with_differing_values = dict([(key, (value, None)) for key, value in self._as_dict().iteritems() if not key in fields_to_ignore and has_non_empty_value(value)])
             else:
-                self._latest_fields_with_differing_values = dict([(key, (None, value)) for key, value in self._as_dict().iteritems() if not key in fields_to_ignore and has_non_empty_value(value)])
+                # In this case, the "before" object is None
+                my_fields = self._as_dict(True)
+                self._latest_fields_with_differing_values = dict([(key, (get_before_value(field_and_value, use_default_model_values_if_other_is_none), field_and_value.value)) for key, field_and_value in my_fields.iteritems() if not key in fields_to_ignore and has_non_empty_value(field_and_value.value)])
+                if use_default_model_values_if_other_is_none:
+                    # Since the above may have added default values that match the new values, we need to
+                    # check whether they are equal, and remove them if so (adding this logic into the
+                    # one-liner, above, would be too ugly).
+                    for key, before_and_after_values in self._latest_fields_with_differing_values.items():
+                        if self._approx_equal(before_and_after_values[0], before_and_after_values[1]):
+                            del self._latest_fields_with_differing_values[key]
+
         return self._latest_fields_with_differing_values
 
-    def latest_fields_with_differing_values(self, other, show_other_as_second_value=True):
+    def latest_fields_with_differing_values(self, other, show_other_as_second_value=True, use_default_model_values_if_other_is_none=False):
         """
         Efficiency method to use in place of find_fields_with_differing_values(). It will simply return the latest
         dictionary built by the other method (if any), or build one if needed. Don't use this if you need the
         updated differences.
         """
         if not self._latest_fields_with_differing_values:
-            self.find_fields_with_differing_values(other, show_other_as_second_value=show_other_as_second_value)
+            self.find_fields_with_differing_values(other, show_other_as_second_value=show_other_as_second_value, use_default_model_values_if_other_is_none=use_default_model_values_if_other_is_none)
         return self._latest_fields_with_differing_values
 
 #    def relationships_with_differing_values(self, to_one_relationship_names=None, to_many_relationship_names=None):
