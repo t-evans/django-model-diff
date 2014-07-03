@@ -98,8 +98,8 @@ class ComparableModelMixin(object):
         return []
 
     def _as_dict(self, get_field_and_value=False):
-        self.latest_dict_values = dict([(f.verbose_name, get_field_value(self, f, get_field_and_value)) for f in self._meta.local_fields if not f.rel or f.name in self.comparable_relationships_to_include()])
-        return self.latest_dict_values
+        latest_dict_values = dict([(f.verbose_name, get_field_value(self, f, get_field_and_value)) for f in self._meta.local_fields if not f.rel or f.name in self.comparable_relationships_to_include()])
+        return latest_dict_values
 
     def _float_approx_equal(self, x, y):
         return abs(float(x) - float(y)) <= self.float_equality_tolerance
