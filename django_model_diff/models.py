@@ -83,8 +83,8 @@ class ComparableModelMixin(object):
 
     def comparable_fields_to_ignore(self):
         """
-        Contains a dictionary of values keyed by field name from the last time the _as_dict()
-        method was called.  If fields change after the _as_dict() method is called, those changes
+        Contains a dictionary of values keyed by field name from the last time the __as_dict()
+        method was called.  If fields change after the __as_dict() method is called, those changes
         will not be reflected here.
         """
         return ['Date Last Edited', 'Last Edited', 'date_last_edited', 'ID', 'uuid']
@@ -97,7 +97,7 @@ class ComparableModelMixin(object):
         """
         return []
 
-    def _as_dict(self, get_field_and_value=False):
+    def __as_dict(self, get_field_and_value=False):
         latest_dict_values = dict([(f.verbose_name, get_field_value(self, f, get_field_and_value)) for f in self._meta.local_fields if not f.rel or f.name in self.comparable_relationships_to_include()])
         return latest_dict_values
 
@@ -190,20 +190,20 @@ class ComparableModelMixin(object):
             else:
                 return not self._approx_equal(None, value)
 
-        my_fields = self._as_dict()
+        my_fields = self.__as_dict()
         fields_to_ignore = self.comparable_fields_to_ignore()
         if other is not None:
-            other_fields = other._as_dict()
+            other_fields = other.__as_dict()
             if show_other_as_second_value:
                 self._latest_fields_with_differing_values = dict([(key, (value, other_fields.get(key))) for key, value in my_fields.iteritems() if not key in fields_to_ignore and not self._approx_equal(value, other_fields.get(key))])
             else:
                 self._latest_fields_with_differing_values = dict([(key, (other_fields.get(key), value)) for key, value in my_fields.iteritems() if not key in fields_to_ignore and not self._approx_equal(value, other_fields.get(key))])
         else:
             if show_other_as_second_value:
-                self._latest_fields_with_differing_values = dict([(key, (value, None)) for key, value in self._as_dict().iteritems() if not key in fields_to_ignore and has_non_empty_value(value)])
+                self._latest_fields_with_differing_values = dict([(key, (value, None)) for key, value in self.__as_dict().iteritems() if not key in fields_to_ignore and has_non_empty_value(value)])
             else:
                 # In this case, the "before" object is None
-                my_fields = self._as_dict(True)
+                my_fields = self.__as_dict(True)
                 self._latest_fields_with_differing_values = dict([(key, (get_before_value(field_and_value, use_default_model_values_if_other_is_none), field_and_value.value)) for key, field_and_value in my_fields.iteritems() if not key in fields_to_ignore and has_non_empty_value(field_and_value.value)])
                 if use_default_model_values_if_other_is_none:
                     # Since the above may have added default values that match the new values, we need to
